@@ -1,0 +1,37 @@
+{
+  "name": "android-use",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Physical Android control through bound ADB sessions",
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.18.3",
+  "exports": {
+    ".": "./dist/src/index.js"
+  },
+  "bin": {
+    "android-use": "dist/src/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:device": "tsx scripts/device-smoke.ts",
+    "build:ime": "node scripts/build-ime.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.20.2",
+    "fast-xml-parser": "5.3.0",
+    "pngjs": "7.0.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "24.7.2",
+    "@types/pngjs": "6.0.5",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}

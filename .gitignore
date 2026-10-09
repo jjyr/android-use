@@ -2,8 +2,12 @@ node_modules/
 dist/
 coverage/
 .local/
+/docs/notes/
 .env
 .env.*
 !.env.example
 .DS_Store
 *.log
+android/ime/build/
+*.jks
+android/fixture/build/

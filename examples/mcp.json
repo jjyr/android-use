@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "android-use": {
+      "command": "/absolute/path/to/pinned/node",
+      "args": [
+        "/absolute/path/to/android-use/dist/src/cli.js",
+        "mcp",
+        "--config",
+        "/absolute/path/to/machine-inventory/android-use.json"
+      ]
+    }
+  }
+}

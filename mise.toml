@@ -1,0 +1,14 @@
+[tools]
+node = "24.11.0"
+"npm:pnpm" = "10.18.3"
+
+[tasks.build]
+run = "pnpm exec tsc"
+[tasks.check]
+run = "pnpm exec tsc --noEmit"
+[tasks.test]
+run = "pnpm exec vitest run"
+[tasks."test:device"]
+run = "pnpm exec tsx scripts/device-smoke.ts"
+[tasks."build:ime"]
+run = "node scripts/build-ime.mjs"

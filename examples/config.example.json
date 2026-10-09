@@ -1,0 +1,15 @@
+{
+  "adbPath": "adb",
+  "mode": "mixed",
+  "devices": [
+    {
+      "id": "development-phone",
+      "expected": {
+        "serial": "OPERATOR_ENROLLED_SERIAL",
+        "model": "OPTIONAL_MODEL"
+      },
+      "wireless": "OPERATOR_SELECTED_MDNS_SERVICE_OR_IP_PORT",
+      "usb": "OPERATOR_SELECTED_USB_SERIAL"
+    }
+  ]
+}
