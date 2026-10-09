@@ -1,7 +1,6 @@
 {
   "name": "android-use",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Physical Android control through bound ADB sessions",
   "engines": {
@@ -19,7 +18,8 @@
     "check": "tsc --noEmit",
     "test": "vitest run",
     "test:device": "tsx scripts/device-smoke.ts",
-    "build:ime": "node scripts/build-ime.mjs"
+    "build:ime": "node scripts/build-ime.mjs",
+    "prepack": "pnpm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.20.2",
@@ -33,5 +33,30 @@
     "tsx": "4.20.6",
     "typescript": "5.9.3",
     "vitest": "3.2.4"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jjyr/android-use.git"
+  },
+  "homepage": "https://github.com/jjyr/android-use",
+  "files": [
+    "dist/src/",
+    "dist/scripts/",
+    "scripts/plugin-start.mjs",
+    ".codex-plugin/",
+    ".mcp.json",
+    "skills/",
+    "assets/",
+    "docs/*.md",
+    "examples/",
+    "mise.toml",
+    "pnpm-lock.yaml",
+    "LICENSE",
+    "README.md",
+    "scripts/build-ime.mjs",
+    "android/**/src/**",
+    "android/**/res/**",
+    "android/**/AndroidManifest.xml"
+  ]
 }

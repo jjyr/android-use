@@ -1,0 +1,6 @@
+interface:
+  display_name: "Android Use"
+  short_description: "Operate Android apps with verified visual feedback"
+  default_prompt: "Use $android-use to operate my enrolled phone and verify the result."
+policy:
+  allow_implicit_invocation: true

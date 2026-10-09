@@ -1,0 +1,26 @@
+{
+  "name": "android-use",
+  "version": "0.1.0",
+  "description": "Control an enrolled Android phone with fresh visual feedback, guarded operations and optional local diagnostics.",
+  "author": { "name": "JJy", "url": "https://github.com/jjyr" },
+  "homepage": "https://github.com/jjyr/android-use",
+  "repository": "https://github.com/jjyr/android-use",
+  "license": "MIT",
+  "keywords": ["android", "phone", "adb", "computer-use", "automation"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "extensions": { "com.openai": { "onboardingSkill": "./skills/android-use-setup/SKILL.md" } },
+  "interface": {
+    "displayName": "Android Use",
+    "shortDescription": "Operate your Android phone with visual feedback",
+    "longDescription": "Use an explicitly enrolled Android phone over authorized USB or Wi-Fi debugging. Operate apps and browsers, inspect fresh screenshots, enter Unicode text and run guarded sequences. Phone enrollment and permissions remain operator-controlled. Diagnostic logging is off by default.",
+    "developerName": "JJy",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://github.com/jjyr/android-use",
+    "defaultPrompt": ["Use my enrolled Android phone to complete a task and verify the result."],
+    "brandColor": "#167D79",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/icon.svg"
+  }
+}

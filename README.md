@@ -1,5 +1,7 @@
 # Android Use
 
+<img src="assets/icon.svg" alt="Android Use — original phone and pointer icon" width="96" height="96">
+
 Android Use is a standalone TypeScript SDK, operator CLI and stdio MCP server for controlling an enrolled physical Android phone through official ADB. It has no Pot dependency.
 
 **Status: MVP implemented, qualification in progress (2026-10-09).** Automated protocol/core checks and real wireless device tests have passed on macOS with one Android 11 phone. The actual MCP path has completed a mobile-browser round-trip flight search using Chinese input, screenshot-based navigation and date selection. A single-platform flexible-month search covered all 30 departure/return pairs and rechecked its minimum. USB, additional OEMs, other host operating systems and cross-platform fare comparison remain unqualified. Local device details and screenshots are excluded from Git.
@@ -28,6 +30,14 @@ Persistent Node worker         |
 ```
 
 The SDK and MCP support app inventory/launch/stop, browser URL opening, click/long press/swipe/drag, Back/Home/Recents, Unicode insertion/append/replacement/clear, and manual pause/resume. The CLI supplies diagnostics, observation, stale-lease reconciliation and MCP startup. It does not expose direct action subcommands.
+
+## Install the plugin with your agent
+
+Copy this short paragraph to your agent:
+
+> Install the Android Use plugin from https://github.com/jjyr/android-use. Read docs/plugin.md, register its Codex marketplace, install android-use@android-use-marketplace, and prepare the installed MCP runtime with the repository’s pinned mise tools. Reuse or configure my enrolled phone under ~/Workspace/Machines, keep debug logging off, and verify plugin discovery plus a fresh phone observation. Ask me only for necessary phone-side pairing or permission actions.
+
+The plugin bundles MCP, operation/setup skills and an original icon. See [the installation guide](docs/plugin.md). It is distributed from Git; no official marketplace or npm registry listing is claimed.
 
 ## Setup
 

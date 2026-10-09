@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "android-use": {
+      "command": "mise",
+      "args": ["exec", "--", "node", "scripts/plugin-start.mjs"],
+      "cwd": ".",
+      "env_vars": ["ANDROID_USE_CONFIG", "ANDROID_USE_DEBUG", "ANDROID_USE_TRACE_CONTENT", "ANDROID_USE_TRACE_DIR", "ANDROID_USE_HIERARCHY", "ADB_SERVER_SOCKET"]
+    }
+  }
+}

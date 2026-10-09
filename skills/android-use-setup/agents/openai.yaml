@@ -1,0 +1,6 @@
+interface:
+  display_name: "Set up Android Use"
+  short_description: "Install and configure local Android phone control"
+  default_prompt: "Use $android-use-setup to install and verify the Android Use plugin."
+policy:
+  allow_implicit_invocation: true
