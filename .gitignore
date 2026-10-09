@@ -11,3 +11,5 @@ coverage/
 android/ime/build/
 *.jks
 android/fixture/build/
+
+android/accessibility/build/

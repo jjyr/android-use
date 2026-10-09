@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Adb, type Bound } from "./connection.js";
 import { capture, probe, compatible } from "./observation.js";
 import { Lease, Journal, defaultStateDir, hash } from "./storage.js";
+import { Recorder, stage } from "./telemetry.js";
 import {
   AndroidError,
   configSchema,
@@ -30,6 +31,7 @@ export class Android {
   config: Config;
   adb: Adb;
   phones = new Set<Phone>();
+  private recorder: Recorder;
   constructor(
     config: unknown,
     public sink: Sink = () => {},
@@ -37,6 +39,8 @@ export class Android {
   ) {
     this.config = configSchema.parse(config);
     this.adb = adb ?? new Adb(this.config);
+    this.recorder = new Recorder(this.config);
+    this.recorder.methods(this, "android", ["listDevices", "open", "close"]);
   }
   async listDevices() {
     const transports = await this.adb.inventory();
@@ -75,6 +79,9 @@ export class Android {
       this.sink,
       () => this.phones.delete(phone),
     );
+    this.recorder.methods(phone, "phone", ["observe", "pause", "resume", "close", "listApps",
+      "launchApp", "stopApp", "openUrl", "click", "longPress", "swipe", "drag", "pressKey", "typeText"],
+      () => ({ phoneSessionId: phone.sessionId, generation: phone.bound.generation }));
     this.phones.add(phone);
     try {
       await phone.observe();
@@ -193,9 +200,9 @@ export class Phone {
     prepare: (o: Observation) => Promise<() => Promise<void>>,
   ): Promise<ActionResult> {
     return this.exclusive(async () => {
-      const before = this.validate(m);
-      await this.bound.health();
-      const p = await probe(this.bound);
+      const before = await stage("action.validate", async () => this.validate(m));
+      await stage("action.health", () => this.bound.health());
+      const p = await stage("action.preflight", () => probe(this.bound));
       if (
         p.packageName !== before.foreground.packageName ||
         p.activity !== before.foreground.activity ||
@@ -212,15 +219,15 @@ export class Phone {
           "STALE_OBSERVATION",
           "Foreground or geometry changed; observe again",
         );
-      const dispatch = await prepare(before);
-      await this.journal.begin(m.requestId);
+      const dispatch = await stage("action.prepare", () => prepare(before));
+      await stage("journal.begin", () => this.journal.begin(m.requestId));
       const started = Date.now();
       let state: ActionResult["dispatch"] = "unknown";
       let error: ActionResult["error"];
       let settling: ActionResult["settling"] = "timeout";
       let o: Observation | null = null;
       try {
-        await dispatch();
+        await stage("action.dispatch", dispatch);
         state = "completed";
       } catch (e) {
         error = {
@@ -228,20 +235,22 @@ export class Phone {
           message: e instanceof Error ? e.message : "Action failed",
         };
       }
-      await this.journal.complete(m.requestId, state);
+      await stage("journal.complete", () => this.journal.complete(m.requestId, state));
       if (this.bound.valid) {
         try {
-          let previous = await probe(this.bound);
-          const deadline = Date.now() + 2000;
-          do {
-            await new Promise((r) => setTimeout(r, 150));
-            const next = await probe(this.bound);
-            if (compatible(previous, next)) {
-              settling = "stable";
-              break;
-            }
-            previous = next;
-          } while (Date.now() < deadline);
+          await stage("action.settle", async () => {
+            let previous = await probe(this.bound);
+            const deadline = Date.now() + 2000;
+            do {
+              await new Promise((r) => setTimeout(r, 150));
+              const next = await probe(this.bound);
+              if (compatible(previous, next)) {
+                settling = "stable";
+                break;
+              }
+              previous = next;
+            } while (Date.now() < deadline);
+          });
           o = await this.take();
         } catch (e) {
           error ??= {

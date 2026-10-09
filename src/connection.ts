@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { type Runner, run } from "./process.js";
+import { stage } from "./telemetry.js";
 import {
   AndroidError,
   type Config,
@@ -28,15 +29,27 @@ export class Adb {
     public runner: Runner = run,
   ) {}
   async execute(args: string[], maxBytes?: number) {
-    const r = await this.runner(this.config.adbPath, args, { maxBytes });
-    if (r.code !== 0)
-      throw new AndroidError(
-        /offline|not found|unauthorized|no devices?\b/i.test(r.stderr)
-          ? "DEVICE_UNAVAILABLE"
-          : "ADB_FAILED",
-        r.stderr.trim().slice(0, 500) || "ADB command failed",
-      );
-    return r.stdout;
+    // Command categories only: never retain selectors, shell payloads or stderr.
+    const command = args[0] === "-t" ? args.slice(2) : args;
+    const known = new Set(["devices", "version", "get-state", "exec-out", "shell"]);
+    let category = known.has(command[0] ?? "") ? command[0]! : "other";
+    if (category === "shell") {
+      const head = command[1]?.match(/^'([^']+)'\s+'([^']+)'/)?.slice(1).join(".");
+      if (head && /^(?:dumpsys\.(?:window|input|power)|wm\.size|uiautomator\.dump|rm\.-f|settings\.get|getprop\.(?:ro.serialno|ro.product.model)|input\.(?:tap|swipe|keyevent)|am\.(?:start|force-stop|broadcast)|cmd\.package)$/.test(head)) category = head;
+    } else if (category === "exec-out" && ["screencap", "cat"].includes(command[1] ?? "")) {
+      category += "." + command[1];
+    }
+    return stage("adb.command", async () => {
+      const r = await this.runner(this.config.adbPath, args, { maxBytes });
+      if (r.code !== 0)
+        throw new AndroidError(
+          /offline|not found|unauthorized|no devices?\b/i.test(r.stderr)
+            ? "DEVICE_UNAVAILABLE"
+            : "ADB_FAILED",
+          r.stderr.trim().slice(0, 500) || "ADB command failed",
+        );
+      return r.stdout;
+    }, { command: category });
   }
   async inventory() {
     return parseDevices((await this.execute(["devices", "-l"])).toString());

@@ -31,6 +31,14 @@ Native checks use application-owned SHA-256 text labels and gesture/scroll state
 
 Real USB cable behavior, second physical phone routing, Android 12+ runtime/other OEMs, Linux/Windows hosts, actual Wi-Fi loss/revoked trust/reboot, protected screens, physical rotation with the implemented core, long-duration sessions, permission-dialog matrix and cross-platform fare coverage remain separate acceptance work. Historical direct-ADB prototype checks do not qualify the implemented core for those cases.
 
-Pot adapter, AccessibilityService, DOM/CDP, multi-touch, automated setup and release distribution are proposed later scope, not implemented features.
+Pot adapter, AccessibilityService semantic actions, DOM/CDP, multi-touch, automated setup and release distribution are proposed later scope, not implemented features.
 
 After acceptance, the original keyboard was restored, the dedicated IME was disabled and the fixture was uninstalled. The source-built IME APK remains installed for explicit development use. The test MCP/HTTP bridge was stopped and no reverse ports remain. The separately owned diagnostic ADB server remains available for development; connection settings are recorded in the machine inventory. The shared ADB server was not restarted.
+
+## Performance qualification, 2026-10-09
+
+Real wireless Android 11 tests verified compact final MCP feedback, Home→Ctrip launch in one guarded invocation (two new observation IDs, one returned image), semantic click of the flight entry, and normal-mode operation with no trace directory even when legacy TRACE/CONTENT flags were set. Full debug mode retains intermediate observations. Automated checks verify refusal-state preservation, compact disabled/password flags, concurrent probe equivalence, disabled-service fallback, no fallback after invalidation and recording restart/abort behavior.
+
+Five alternating samples per provider on the Ctrip homepage averaged 3.655s UIAutomator / 1.833s accessibility per complete observation. On the flight form they averaged 3.358s / 1.391s. The form retained all 43 UIAutomator text-label signatures (text/bounds/actionability), and 32 of 33 named actionable signatures matched exactly; the remaining bottom-edge container had differing clipped bounds. This is page-specific evidence, not all-app/OEM equivalence. The fixture install was canceled by the phone, so these measurements use Ctrip rather than claiming a native fixture run. Detailed evidence is Git-ignored in docs/notes/optimization-20261009.
+
+Serial/parallel probe snapshots agreed in ten comparisons across both pages. Real scrcpy forced-exit testing produced two finalized MP4 segments; the monitor restarted once and stopped cleanly on abort. Actual Wi-Fi loss and reconnect are still unqualified. Exact live provider-request correlation and end-to-end model latency/token improvements remain host-dependent and have not been measured by this benchmark.

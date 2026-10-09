@@ -8,12 +8,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { defaultStateDir, reconcileLease } from "./storage.js";
 import type { Config } from "./types.js";
+import { Recorder, currentTrace, fingerprint } from "./telemetry.js";
 const runtime = `android_repl executes authorized host Node code; it is not a sandbox. Persistent bindings: android, console, emit.
 Start: let phone = await android.open({deviceId:'configured-id',connection:'wireless'}); phone.observation holds its latest observation.
 Read: await android.listDevices(); await phone.observe(); await phone.listApps();
 Every mutation needs {observationId:phone.observation.id,requestId:'unique-id'}.
 Actions: launchApp/stopApp({...,packageName}), openUrl({...,packageName,url}), click/longPress({...,target:{elementId}} or {x,y}), swipe/drag({...,start:{x,y},end:{x,y},durationMs}), pressKey({...,key:'Back'|'Home'|'Recents'}), typeText({...,text,mode:'insert'|'append'|'replace'|'clear'}).
-Images and structured observations are emitted automatically after open/observe/resume/actions. Inspect each returned state before choosing another action. Coordinates refer to full, unscaled PNG pixels. No image means no screenshot-point input. Partial observations cannot admit mutations. UI hierarchy can miss visible browser controls; use inspected screenshot points in mixed mode.
+The latest observation per phone is emitted automatically at the end of each invocation as compact JSON plus PNG. Empty noninteractive nodes, className and empty/false fields are omitted; enabled defaults true, other missing flags false, text fields empty. Original IDs/bounds are preserved; full data remains in phone.observation (emit it explicitly if needed). Each action still captures fresh state. Multiple well-grounded actions may share one invocation: inspect phone.observation after each, stop on error/partial state, and do not assume settling means the network content is loaded. Coordinates refer to full, unscaled PNG pixels. No image means no screenshot-point input. Partial observations cannot admit mutations. UI hierarchy can miss visible browser controls; use inspected screenshot points in mixed mode.
 Text requires the operator-provisioned dedicated IME. Insert uses current selection; append moves to the end; replace/clear require complete extracted text. Never assume a command acknowledged the user task. Errors preserve prior observations; input may have executed before capture failed. Request IDs never repeat, even after reconnect.
 await phone.pause() for manual takeover; await phone.resume() for fresh state; await phone.close() to release. Disconnect invalidates the handle: close/reopen explicitly. No automatic input replay. Keep invocations small: wall deadline 30 seconds; idle expiry 10 minutes. Reset kills this session and closes handles. Runtime/tool contract is docs/mcp-contract.md.`;
 interface Session {
@@ -25,7 +26,9 @@ interface Session {
 export class ReplSessions {
   sessions = new Map<string, Session>();
   timer: NodeJS.Timeout;
+  recorder: Recorder;
   constructor(public config: Config) {
+    this.recorder = new Recorder(config);
     this.timer = setInterval(() => {
       for (const s of this.sessions.values())
         if (!s.busy && Date.now() - s.last > 600000) void this.destroy(s);
@@ -60,7 +63,7 @@ export class ReplSessions {
           clearTimeout(timer);
           reject(new Error("Worker exited"));
         });
-        child.send({ type: "init", config: this.config });
+        child.send({ type: "init", config: this.config, runId: this.recorder.runId });
       });
       return s;
     } catch (e) {
@@ -94,7 +97,16 @@ export class ReplSessions {
       } catch {}
     }
   }
-  async call(args: { code?: string; session_id?: string; reset?: boolean }) {
+  async call(args: { code?: string; session_id?: string; reset?: boolean }, mcpRequestId?: string,
+    correlation: { taskId?: string; toolCallId?: string; modelRequestId?: string } = {}) {
+    return this.recorder.span("mcp.android_repl", () => this.evaluate(args), {
+      replSessionId: args.session_id ?? null, mcpRequestId: mcpRequestId ?? null,
+      codeSha256: args.code === undefined ? null : fingerprint(args.code),
+      codeBytes: Buffer.byteLength(args.code ?? ""), reset: !!args.reset,
+      ...correlation,
+    }, { input: args, content: true, parentId: null });
+  }
+  private async evaluate(args: { code?: string; session_id?: string; reset?: boolean }) {
     if (!args.session_id) {
       if (args.code !== undefined || args.reset)
         throw new Error(
@@ -182,7 +194,7 @@ export class ReplSessions {
         }, 30000);
         s.child.on("message", message);
         s.child.once("exit", exited);
-        s.child.send({ type: "eval", code: args.code });
+        s.child.send({ type: "eval", code: args.code, parentId: currentTrace()?.spanId });
       });
     } finally {
       s.busy = false;
@@ -208,9 +220,14 @@ export async function startMcp(config: Config) {
         reset: z.boolean().optional(),
       },
     },
-    async (args) => {
+    async (args, extra) => {
       try {
-        return await sessions.call(args);
+        const correlation: { taskId?: string; toolCallId?: string; modelRequestId?: string } = {};
+        for (const key of ["taskId", "toolCallId", "modelRequestId"] as const) {
+          const value = extra._meta?.[`android-use/${key}`];
+          if (typeof value === "string" && value.length <= 256) correlation[key] = value;
+        }
+        return await sessions.call(args, String(extra.requestId), correlation);
       } catch (e) {
         return {
           isError: true,

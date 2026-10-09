@@ -2,12 +2,16 @@ import repl from "node:repl";
 import { PassThrough } from "node:stream";
 import { inspect } from "node:util";
 import { Android } from "./core.js";
-import { publicObservation, type Observation, type Config } from "./types.js";
+import { type Observation, type Config } from "./types.js";
 import { Phone } from "./core.js";
+import { compactObservation } from "./feedback.js";
+import { Recorder, syncStage } from "./telemetry.js";
 let output: any[] = [];
 let budget = 0;
 let android: Android;
 let server: repl.REPLServer;
+let recorder: Recorder;
+let pending = new Map<string, { observation: Observation; count: number }>();
 let rejectCurrent: ((error: Error) => void) | null = null;
 function add(item: any) {
   const bytes = Buffer.byteLength(JSON.stringify(item));
@@ -30,16 +34,22 @@ function emit(value: unknown) {
   if (text !== undefined) add({ type: "text", text });
 }
 function observation(o: Observation) {
-  add({ type: "text", text: JSON.stringify(publicObservation(o)) });
-  if (o.screenshot)
-    add({
-      type: "image",
-      mimeType: "image/png",
-      data: o.screenshot.toString("base64"),
-    });
+  const prior = pending.get(o.sessionId);
+  pending.set(o.sessionId, { observation: o, count: (prior?.count ?? 0) + 1 });
+}
+function flushObservations() {
+  syncStage("feedback.serialize", () => {
+    for (const { observation: o, count } of pending.values()) {
+      add({ type: "text", text: JSON.stringify(compactObservation(o, count)) });
+      if (o.screenshot) add({ type: "image", mimeType: "image/png", data: o.screenshot.toString("base64") });
+    }
+    pending.clear();
+  });
 }
 process.on("message", async (message: any) => {
   if (message.type === "init") {
+    process.env.ANDROID_USE_TRACE_RUN_ID = message.runId;
+    recorder = new Recorder(message.config, message.runId);
     android = new Android(message.config as Config, observation);
     const input = new PassThrough();
     const sink = new PassThrough();
@@ -84,8 +94,9 @@ process.on("message", async (message: any) => {
   if (message.type === "eval") {
     output = [];
     budget = 0;
+    pending.clear();
     try {
-      await new Promise<void>((resolve, reject) => {
+      await recorder.span("repl.eval", async () => { try { await new Promise<void>((resolve, reject) => {
         rejectCurrent = reject;
         server.eval(
           message.code + "\n",
@@ -108,9 +119,11 @@ process.on("message", async (message: any) => {
                 } else if (
                   value &&
                   typeof value === "object" &&
-                  "screenshot" in value
+                  (value as any).schemaVersion === 1 &&
+                  "captureStartedAt" in value
                 ) {
-                  emit(publicObservation(value as Observation));
+                  // The sink already retains this observation; avoid duplicate text.
+                  if (!pending.has((value as Observation).sessionId)) observation(value as Observation);
                 } else emit(value);
               }
               resolve();
@@ -119,7 +132,7 @@ process.on("message", async (message: any) => {
             }
           },
         );
-      });
+      }); } finally { flushObservations(); } }, {}, { parentId: message.parentId ?? null });
       rejectCurrent = null;
       process.send?.({ done: true, content: output });
     } catch (e) {

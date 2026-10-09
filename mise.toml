@@ -12,3 +12,6 @@ run = "pnpm exec vitest run"
 run = "pnpm exec tsx scripts/device-smoke.ts"
 [tasks."build:ime"]
 run = "node scripts/build-ime.mjs"
+
+[tasks."build:accessibility"]
+run = "node scripts/build-ime.mjs --accessibility"

@@ -62,13 +62,21 @@ await phone.launchApp({
 });
 ```
 
-Every mutation needs the latest observation ID and a new request ID. Actions automatically emit fresh observations. Screenshot coordinates use the original PNG pixels; account for any client-side resizing. Stale, partial, paused and unavailable sessions refuse input. After disconnect, explicitly close/reopen and inspect fresh state; never replay an uncertain mutation. Closing does not undo phone actions or change the keyboard.
+Every mutation needs the latest observation ID and a new request ID. Actions capture fresh observations; MCP emits the final state per phone per invocation. Screenshot coordinates use the original PNG pixels; account for any client-side resizing. Stale, partial, paused and unavailable sessions refuse input. After disconnect, explicitly close/reopen and inspect fresh state; never replay an uncertain mutation. Closing does not undo phone actions or change the keyboard.
 
 ## Text input and real-device qualification
 
 Unicode input requires the source-built dedicated IME to be installed, enabled and selected by the operator. See [IME provisioning](docs/ime.md). Password fields are refused. Replacement/append require an editor that exposes complete extracted text; the component refuses unsupported editors rather than using ADB text fallback.
 
 [Qualification](docs/qualification.md) distinguishes automated checks, actual device evidence and pending coverage. Real-device smoke tests require explicit configuration, selected device/transport and artifact destination. They operate only the disposable fixture, which must be provisioned first.
+
+## Performance and optional diagnostics
+
+MCP feedback returns one compact final observation/image per phone per invocation. Full observations remain accessible as `phone.observation`; deterministic, guarded operations can share one code invocation while each still captures fresh state. See the approved [contract](docs/mcp-contract.md).
+
+Diagnostic traces are disabled by default. Enable `ANDROID_USE_DEBUG=1` for detailed timings; additionally set `ANDROID_USE_TRACE_CONTENT=1` to retain full input/output/screenshots locally. Request replay-prevention journals and leases remain active in normal mode.
+
+Independent device probes run concurrently without caching lock, foreground, orientation or display size. An optional manually provisioned read-only AccessibilityService can replace UIAutomator hierarchy capture with `ANDROID_USE_HIERARCHY=accessibility`; unavailable service falls back to UIAutomator. See [performance options and qualification](docs/performance.md). Neither provider promises atomic screenshot/tree capture.
 
 ## Documentation
 
@@ -81,6 +89,7 @@ Unicode input requires the source-built dedicated IME to be installed, enabled a
 | IME build, install and restoration | [IME provisioning](docs/ime.md) |
 | Verified behavior and known limits | [Qualification](docs/qualification.md) |
 | Remaining milestones | [Development plan](docs/development-plan.md) |
+| Local call/stage timing and provider token correlation | [Telemetry](docs/telemetry.md) |
 | Design references | [Reference findings](docs/references.md) |
 
-Changes to the model-visible interface still require explicit agreement under [AGENTS.md](AGENTS.md). Pot integration, AccessibilityService, DOM/CDP, multi-touch and automated provisioning are later work.
+Changes to the model-visible interface still require explicit agreement under [AGENTS.md](AGENTS.md). Pot integration, AccessibilityService semantic actions, DOM/CDP, multi-touch and automated provisioning are later work.

@@ -1,0 +1,1 @@
+<resources><string name="service_description">Read-only UI hierarchy for an authorized ADB operator. No touch injection, network access or background screen logging. Disable after testing.</string></resources>

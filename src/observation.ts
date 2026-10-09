@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
 import { PNG } from "pngjs";
 import type { Bound } from "./connection.js";
+import { readHierarchy } from "./hierarchy.js";
+import { stage } from "./telemetry.js";
 import {
   AndroidError,
   type Element,
@@ -67,7 +69,7 @@ export function parseHierarchy(
             bounds: b,
             clickable: n.clickable === "true",
             longClickable: n["long-clickable"] === "true",
-            editable: String(n.class ?? "").endsWith("EditText"),
+            editable: n.editable === "true" || String(n.class ?? "").endsWith("EditText"),
             focused: n.focused === "true",
             enabled: n.enabled === "true",
             password: n.password === "true",
@@ -139,10 +141,14 @@ export function parseProbe(
   };
 }
 export async function probe(bound: Bound): Promise<Probe> {
-  const window = await bound.shell(["dumpsys", "window"]);
-  const input = await bound.shell(["dumpsys", "input"]);
-  const power = await bound.shell(["dumpsys", "power"]);
-  const size = await bound.shell(["wm", "size"]);
+  // Independent read-only queries share one round trip window; none is cached.
+  // Size overrides/rotation/lock state remain checked on every admission/capture.
+  const [window, input, power, size] = await Promise.all([
+    bound.shell(["dumpsys", "window"]),
+    bound.shell(["dumpsys", "input"]),
+    bound.shell(["dumpsys", "power"]),
+    bound.shell(["wm", "size"]),
+  ]);
   return parseProbe(window, input, power, size);
 }
 export function compatible(a: Probe, b: Probe) {
@@ -159,10 +165,13 @@ export async function capture(
   bound: Bound,
   sessionId: string,
 ): Promise<Observation> {
+  return stage("observation.capture", () => captureImpl(bound, sessionId), { phoneSessionId: sessionId });
+}
+async function captureImpl(bound: Bound, sessionId: string): Promise<Observation> {
   let last: Observation | undefined;
   for (let attempt = 0; attempt < 2; attempt++) {
     const started = new Date().toISOString();
-    const before = await probe(bound);
+    const before = await stage("observation.preprobe", () => probe(bound), { attempt });
     const limitations: string[] = [];
     let bytes: Buffer | undefined;
     let width = before.size?.[0] ?? 0,
@@ -172,8 +181,8 @@ export async function capture(
     if (before.rotation === 1 || before.rotation === 3)
       [width, height] = [height, width];
     try {
-      bytes = await bound.execute(["exec-out", "screencap", "-p"]);
-      const info = pngInfo(bytes);
+      bytes = await stage("observation.screenshot", () => bound.execute(["exec-out", "screencap", "-p"]), { attempt });
+      const info = await stage("observation.pngDecode", async () => pngInfo(bytes!), { attempt });
       width = info.width;
       height = info.height;
       black = info.black;
@@ -185,22 +194,16 @@ export async function capture(
     }
     let elements: Element[] = [];
     let hierarchy = false;
-    const path = `/data/local/tmp/android-use-${randomUUID()}.xml`;
     try {
-      await bound.shell(["uiautomator", "dump", path]);
-      const xml = (
-        await bound.execute(["exec-out", "cat", path], 2 * 1024 * 1024)
-      ).toString();
-      elements = parseHierarchy(xml, width, height);
+      const xml = await readHierarchy(bound, attempt);
+      elements = await stage("observation.hierarchyParse", async () => parseHierarchy(xml, width, height), { attempt });
       hierarchy = true;
       components.hierarchy = new Date().toISOString();
     } catch (e) {
       if (!bound.valid) throw e;
       limitations.push("HIERARCHY_UNAVAILABLE");
-    } finally {
-      if (bound.valid) await bound.shell(["rm", "-f", path]).catch(() => {});
     }
-    const after = await probe(bound);
+    const after = await stage("observation.postprobe", () => probe(bound), { attempt });
     components.foreground = new Date().toISOString();
     const expected =
       after.size &&
@@ -221,7 +224,7 @@ export async function capture(
     if (!after.packageName || after.rotation === null)
       limitations.push("FOREGROUND_OR_GEOMETRY_UNKNOWN");
     const ime = (
-      await bound.shell(["settings", "get", "secure", "default_input_method"])
+      await stage("observation.imeQuery", () => bound.shell(["settings", "get", "secure", "default_input_method"]), { attempt })
     ).trim();
     last = {
       schemaVersion: 1,

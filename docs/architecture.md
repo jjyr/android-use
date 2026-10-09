@@ -1,12 +1,12 @@
 # Architecture
 
-Implemented architecture as of 2026-10-09. The approved model-visible interface is [MCP contract](mcp-contract.md); [Qualification](qualification.md) records actual coverage. Pot integration and AccessibilityService below remain proposals.
+Implemented architecture as of 2026-10-09. The approved model-visible interface is [MCP contract](mcp-contract.md); [Qualification](qualification.md) records actual coverage. Pot integration and AccessibilityService semantic actions remain proposals; an opt-in read-only hierarchy service is implemented.
 
 ## Objective and scope
 
 An agent opens an installed application, navigates its UI, enters supported text, observes results and reports evidence. The phone remains a user's real device with existing accounts and data. Neither USB nor wireless access provides Sandbox isolation.
 
-The first increment supports USB and Android wireless debugging through official ADB, with UIAutomator hierarchy dumps. Screenshots provide visual context and cover custom views absent from the hierarchy. A dedicated InputMethodService companion supplies Unicode text input in MVP; its provisioning remains an operator workflow. Optional scrcpy lets the operator watch and take over. A Kotlin AccessibilityService companion is a later option for semantic actions, richer input and page-change events.
+The first increment supports USB and Android wireless debugging through official ADB, with UIAutomator hierarchy dumps. Screenshots provide visual context and cover custom views absent from the hierarchy. A dedicated InputMethodService companion supplies Unicode text input in MVP; its provisioning remains an operator workflow. Optional scrcpy lets the operator watch and take over. An opt-in Java AccessibilityService companion supplies on-demand read-only hierarchy snapshots; manual provisioning is required. Semantic actions, richer input and page-change streaming remain later options. See performance.md for feedback coalescing, concurrent probes and explicit debug collection.
 
 The approved MVP scope covers installed-app discovery, launch/switch and explicit stop; click, long press, swipe/drag; dedicated-IME Unicode input with declared insertion/replacement semantics; and Back/Home/Recents. Concrete methods and arguments are approved and implemented in the MCP contract. Multi-touch, root, legacy unauthenticated TCP setup, emulator provisioning, APK installation and unrestricted phone shell access are outside the initial agent surface. Browser use means operating the installed browser's visible Android UI; DOM/CDP browser attachment is deferred.
 
@@ -61,5 +61,7 @@ Close releases the lease and pending host processes; it does not force-stop the 
 Use bounded command timeouts, hierarchy size/node limits and screenshot limits. Defaults are published in the MCP contract; observations distinguish partial capture and limitations. Temporary hierarchy files use per-session paths and are cleaned up; stdout carries protocol content and stderr carries diagnostics.
 
 Keep raw screenshots, hierarchy, URLs and typed text out of default durable diagnostics. Retain minimal request IDs, outcome states and device-generation metadata for recovery. Explicit test artifacts may include observations, with operator-selected storage and retention. Machine-specific connection and setup notes belong in `~/Workspace/Machines`, not this component.
+
+[Local telemetry](telemetry.md) is off by default. Explicit ANDROID_USE_DEBUG=1 records correlated MCP/SDK/stage spans under the host state directory. Full operation inputs, observations and PNG evidence additionally require ANDROID_USE_TRACE_CONTENT=1. Token usage comes from provider records exported by the host; Android-use does not estimate or generate model usage.
 
 Protected screens can produce black screenshots or inaccessible fields; return the limitation and do not claim bypass capability. Lock screen, permission dialogs, keyboard overlays and OEM differences are explicit qualification cases.

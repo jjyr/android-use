@@ -1,12 +1,12 @@
 # MCP contract for implementation review
 
-Status: explicitly approved by the user on 2026-10-09; implemented; verification coverage is documented in qualification.md. This document fixes the agreed names, arguments and behavior.
+Status: initial contract and the compact/final-observation optimization explicitly approved by the user on 2026-10-09; implemented; verification coverage is documented in qualification.md. This document fixes the agreed names, arguments and behavior.
 
 One stdio MCP tool: `android_repl`.
 
 Arguments: `code?: string` (maximum 16,384 characters), `session_id?: string`, `reset?: boolean` (default false). A call with no session and no code creates a session and returns runtime documentation and its ID. Code requires that ID. Reset requires the ID, closes its phone handles and terminates the worker. Sessions expire after 10 idle minutes. One invocation per session; concurrent calls return busy. Code has a 30-second wall deadline; timeout terminates the worker and releases owned leases after reconciling command outcomes. This executes host Node code and is not a sandbox.
 
-Persistent bindings: `android`, `console`, `emit(value)`. Variables and top-level await persist across invocations. `console` output is bounded. Each observation produced by a phone operation is automatically emitted as structured JSON plus a separate MCP PNG image block in mixed mode. `emit` emits bounded JSON; image bytes never appear as base64 text in JSON. Errors retain earlier emitted observations and state that a command may already have executed.
+Persistent bindings: `android`, `console`, `emit(value)`. Variables and top-level await persist across invocations. `console` output is bounded. Each phone operation still captures a fresh full SDK observation. At the end of an invocation, the latest observation per phone is automatically emitted as compact structured JSON plus a separate MCP PNG image block in mixed mode; intermediate observations remain in the SDK and in opted-in full debug evidence. Compact elements omit blank noninteractive nodes, className, empty text/description/resourceId and default flags. Missing enabled means true; other missing flags mean false; missing text fields mean empty strings. Original IDs and bounds are retained. A feedback field reports format, total/omitted elements and observationsInCall. `emit(phone.observation)` explicitly returns the full structure when needed. `emit` emits bounded JSON; image bytes never appear as base64 text in JSON. Errors retain the latest produced observation per phone and state that a command may already have executed.
 
 SDK and REPL phone methods use these signatures:
 
@@ -42,3 +42,17 @@ Text input requires the configured dedicated IME already installed, enabled and 
 Initial bounds: ADB command timeout 15 seconds, PNG 6 MiB, hierarchy 2 MiB/5,000 nodes, text 8 KiB UTF-8, settling 2 seconds, observation maximum age 60 seconds. Default host mode is mixed. These are validation limits, not a latency SLA. Error codes include BUSY, CLOSED, PAUSED, STALE_OBSERVATION, DEVICE_UNAVAILABLE, IDENTITY_MISMATCH, INVALID_TARGET, UNSUPPORTED, CAPTURE_FAILED, REQUEST_REPEATED, COMMAND_TIMEOUT and REPL_TIMEOUT. Refusals occur before mutation when validation fails.
 
 Implementation clarification: `settling: stable` covers foreground/geometry probes, not network/render completion. Sequential screenshot and hierarchy capture is not atomic. See interaction.md for limitations and qualification.md for verified coverage.
+
+## Verified sequential execution pattern
+
+The existing code argument supports guarded sequences; no tool, argument or phone method was added. Use current IDs, fresh request IDs and full SDK observations within a single invocation. Stop if any result has an error, unknown dispatch, missing/partial observation, or a semantic guard fails. Coalescing output does not bypass capture, admission, journal or lease checks. Keep sequences short enough for the existing 30-second deadline; network loads remain separate decision points.
+
+```js
+var result = await phone.longPress({observationId:phone.observation.id,
+  requestId:'sequence-unique-1',target:{elementId:confirmedButtonId}});
+if (result.error || result.dispatch !== 'completed' || !result.observation || result.observation.partial)
+  throw new Error('Stop: reconcile operation result');
+var next = phone.observation.elements.find(e=>e.text==='Expected next label' && e.longClickable);
+if (!next) throw new Error('Stop: expected state absent');
+// Only now dispatch the next independently journaled operation.
+```

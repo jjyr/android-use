@@ -11,7 +11,9 @@ const command = (name) => (java ? join(java, name) : name);
 const bt = join(sdk, "build-tools", "35.0.0"),
   jar = join(sdk, "platforms", "android-35", "android.jar");
 const fixture = process.argv.includes("--fixture");
-const root = resolve(fixture ? "android/fixture" : "android/ime"),
+const accessibility = process.argv.includes("--accessibility");
+const component = fixture ? "fixture" : accessibility ? "accessibility" : "ime";
+const root = resolve(`android/${component}`),
   out = join(root, "build");
 mkdirSync(join(out, "classes"), { recursive: true });
 const run = (file, args, cwd = root) =>
@@ -29,12 +31,12 @@ run(command("javac"), [
     root,
     fixture
       ? "src/dev/androiduse/fixture/FixtureActivity.java"
-      : "src/dev/androiduse/ime/UnicodeIme.java",
+      : accessibility ? "src/dev/androiduse/accessibility/HierarchyService.java" : "src/dev/androiduse/ime/UnicodeIme.java",
   ),
 ]);
 const classes = join(
   out,
-  fixture ? "classes/dev/androiduse/fixture" : "classes/dev/androiduse/ime",
+  `classes/dev/androiduse/${component}`,
 );
 run(command("java"), [
   "-cp",
@@ -100,7 +102,7 @@ run(command("java"), [
   "--key-pass",
   "pass:android",
   "--out",
-  join(out, fixture ? "android-use-fixture.apk" : "android-use-ime.apk"),
+  join(out, `android-use-${component}.apk`),
   join(out, "aligned.apk"),
 ]);
 run(command("java"), [
@@ -108,5 +110,5 @@ run(command("java"), [
   join(bt, "lib/apksigner.jar"),
   "verify",
   "--verbose",
-  join(out, fixture ? "android-use-fixture.apk" : "android-use-ime.apk"),
+  join(out, `android-use-${component}.apk`),
 ]);
