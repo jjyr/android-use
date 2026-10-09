@@ -35,9 +35,9 @@ The SDK and MCP support app inventory/launch/stop, browser URL opening, click/lo
 
 Copy this short paragraph to your agent:
 
-> Install the Android Use plugin from https://github.com/jjyr/android-use. Read docs/plugin.md, register its Codex marketplace, install android-use@android-use-marketplace, and prepare the installed MCP runtime with the repository’s pinned mise tools. Reuse or configure my enrolled phone under ~/Workspace/Machines, keep debug logging off, and verify plugin discovery plus a fresh phone observation. Ask me only for necessary phone-side pairing or permission actions.
+> Install the Android Use plugin from https://github.com/jjyr/android-use. Use my existing GitHub access if the repository is private. Read docs/plugin.md, register its Codex marketplace, install android-use@android-use-marketplace, and prepare the installed MCP runtime with the repository’s pinned mise tools. Reuse or configure my enrolled phone under ~/Workspace/Machines, keep debug logging off, and verify plugin discovery plus a fresh phone observation. Ask me only for necessary phone-side pairing or permission actions.
 
-The plugin bundles MCP, operation/setup skills and an original icon. See [the installation guide](docs/plugin.md). It is distributed from Git; no official marketplace or npm registry listing is claimed.
+The plugin bundles MCP, operation/setup skills and an original icon. See [the installation guide](docs/plugin.md). It is distributed from Git; private repositories require authorized GitHub read access. No official marketplace or npm registry listing is claimed.
 
 ## Setup
 

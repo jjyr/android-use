@@ -4,6 +4,8 @@ Implemented package format: Codex `.codex-plugin/plugin.json`, repository market
 
 ## Agent installation
 
+For a private repository, the agent needs existing authorized GitHub read access. Use configured Git credentials; installation does not change repository visibility or grant repository access.
+
 Register the repository and install its plugin:
 
 ```sh
@@ -54,7 +56,7 @@ The npm package manifest includes the compiled CLI/SDK, plugin metadata, skills 
 mise exec -- pnpm pack --pack-destination /absolute/output/directory
 ```
 
-The allowlist excludes test recordings, device notes, credentials, APKs, signing keys and node_modules. Package creation does not publish to a registry. Once an operator installs the produced package, its android-use CLI supports the existing mcp command with an absolute configuration path. Git plugin installation remains the documented public path until an npm release is separately published.
+The allowlist excludes test recordings, device notes, credentials, APKs, signing keys and node_modules. Package creation does not publish to a registry. Once an operator installs the produced package, its android-use CLI supports the existing mcp command with an absolute configuration path. Git plugin installation remains the documented Git distribution path until an npm release is separately published.
 
 ## Local qualification
 
