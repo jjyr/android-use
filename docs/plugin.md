@@ -4,6 +4,8 @@ Implemented package format: Codex `.codex-plugin/plugin.json`, repository market
 
 ## Agent installation
 
+Start with [phone setup and permissions](phone-setup.md). The plugin installs host-side MCP and skills; phone companions and their permissions are separate explicit setup steps.
+
 For a private repository, the agent needs existing authorized GitHub read access. Use configured Git credentials; installation does not change repository visibility or grant repository access.
 
 Register the repository and install its plugin:
@@ -22,6 +24,8 @@ mise run build
 ```
 
 The plugin starts MCP with `mise exec -- node scripts/plugin-start.mjs`, with the installed plugin root as cwd. Install mise and official ADB if needed under the user's setup authorization. Do not execute setup or download dependencies on every MCP call. Plugin startup never builds, pairs a device, installs an APK or enables phone permissions. A packaged runtime already containing dist does not require a source rebuild.
+
+On the tested Codex host, a plugin-list refresh regenerated the installed cache and removed locally built runtime/dependency files. Finish discovery/refresh before preparing that installed root. After an upgrade or refresh, check that `dist/src/cli.js` and dependencies still exist and rerun the preparation commands above if missing. Do not assume a build survives cache regeneration; a self-contained release runtime remains future work.
 
 Configure an enrolled phone using [connections.md](connections.md) and [the example](../examples/config.example.json). Keep its configuration and persistent shared state outside both repositories and plugin caches, preferably under `~/Workspace/Machines`. Default config path:
 
